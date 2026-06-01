@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#0d0f17">
+<title>Vocal → Chords</title>
+<style>
+  :root{
+    --bg:#0d0f17; --panel:#171a26; --panel2:#1f2333; --line:#2b3043;
+    --txt:#eef1f8; --muted:#9aa3bd; --accent:#7c5cff; --accent2:#9d83ff;
+    --ok:#39d98a; --warn:#ffb454;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html,body{margin:0; background:var(--bg); color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-text-size-adjust:100%}
+  body{padding:max(16px,env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom))}
+  .wrap{max-width:560px; margin:0 auto}
+  h1{font-size:22px; margin:6px 0 2px; letter-spacing:.2px}
+  .sub{color:var(--muted); font-size:13px; margin:0 0 18px}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:16px;
+    padding:16px; margin-bottom:14px}
+  label{display:block; font-size:13px; color:var(--muted); margin-bottom:7px; font-weight:600}
+  .filebtn{display:flex; align-items:center; justify-content:center; gap:10px;
+    width:100%; min-height:64px; border:2px dashed var(--line); border-radius:14px;
+    background:var(--panel2); color:var(--txt); font-size:16px; font-weight:600;
+    cursor:pointer; text-align:center; padding:12px}
+  .filebtn.has{border-style:solid; border-color:var(--accent)}
+  .filename{font-size:13px; color:var(--accent2); margin-top:8px; word-break:break-all}
+  input[type=file]{display:none}
+  .controls{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  .controls .full{grid-column:1 / -1}
+  input[type=number],select{width:100%; min-height:52px; font-size:17px; color:var(--txt);
+    background:var(--panel2); border:1px solid var(--line); border-radius:12px;
+    padding:0 14px; appearance:none; -webkit-appearance:none}
+  select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239aa3bd' stroke-width='3'><path d='M6 9l6 6 6-6'/></svg>");
+    background-repeat:no-repeat; background-position:right 14px center; padding-right:40px}
+  .seg{display:flex; gap:8px}
+  .seg button{flex:1; min-height:52px; border-radius:12px; border:1px solid var(--line);
+    background:var(--panel2); color:var(--muted); font-size:16px; font-weight:700}
+  .seg button.on{background:var(--accent); color:#fff; border-color:var(--accent)}
+  .btn{display:block; width:100%; min-height:60px; border:none; border-radius:14px;
+    font-size:18px; font-weight:800; color:#fff; background:var(--accent);
+    cursor:pointer; letter-spacing:.3px}
+  .btn:disabled{opacity:.45}
+  .btn.secondary{background:var(--panel2); color:var(--txt); border:1px solid var(--line); font-weight:700}
+  .btn.ok{background:var(--ok); color:#06281a}
+  .row{display:flex; gap:10px}
+  .row>*{flex:1}
+  .hidden{display:none !important}
+  .keybadge{font-size:30px; font-weight:900; letter-spacing:.5px}
+  .keymeta{color:var(--muted); font-size:13px; margin-top:4px}
+  .timeline{display:flex; flex-wrap:wrap; gap:8px; margin-top:6px}
+  .chip{flex:1 0 auto; min-width:72px; text-align:center; background:var(--panel2);
+    border:1px solid var(--line); border-radius:12px; padding:12px 8px}
+  .chip .nm{font-size:20px; font-weight:800}
+  .chip .rn{font-size:11px; color:var(--muted); margin-top:3px}
+  .chip.active{border-color:var(--accent); background:#241f3f}
+  .prog{height:8px; background:var(--panel2); border-radius:6px; overflow:hidden; margin-top:12px}
+  .prog>div{height:100%; width:0; background:linear-gradient(90deg,var(--accent),var(--accent2)); transition:width .15s}
+  .status{font-size:13px; color:var(--muted); margin-top:10px; text-align:center; min-height:18px}
+  .hint{font-size:12px; color:var(--muted); margin-top:10px; line-height:1.5}
+  .toolbar{display:flex; gap:10px; align-items:center; margin-bottom:12px}
+  .small{font-size:12px; color:var(--muted)}
+  .switch{display:flex; align-items:center; gap:10px; justify-content:space-between;
+    background:var(--panel2); border:1px solid var(--line); border-radius:12px;
+    padding:0 14px; min-height:52px; font-size:15px; font-weight:600}
+  .switch input{width:48px; height:28px}
+  .err{color:var(--warn)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Vocal&nbsp;→&nbsp;Chords</h1>
+  <p class="sub">Upload a vocal stem, get an in-key chord progression + MIDI for FL Studio.</p>
+
+  <!-- STEP 1: file -->
+  <div class="card">
+    <label>1 · Vocal stem</label>
+    <label for="file" class="filebtn" id="fileLabel">
+      <span>🎤 Tap to choose a vocal file</span>
+    </label>
+    <input type="file" id="file" accept="audio/*,.wav,.mp3,.flac,.m4a,.ogg,.aac">
+    <div class="filename" id="fileName"></div>
+  </div>
+
+  <!-- STEP 2: options -->
+  <div class="card">
+    <label>2 · Options <span class="small">(defaults are fine)</span></label>
+    <div class="controls">
+      <div>
+        <label>BPM</label>
+        <input type="number" id="bpm" value="120" min="40" max="240" inputmode="numeric">
+      </div>
+      <div>
+        <label>Chords / bar</label>
+        <div class="seg" id="cpbSeg">
+          <button data-v="1" class="on">1</button>
+          <button data-v="2">2</button>
+        </div>
+      </div>
+      <div class="full">
+        <div class="switch">
+          <span>Add 7th chords</span>
+          <input type="checkbox" id="sevenths">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3: analyze -->
+  <button class="btn" id="analyze" disabled>Analyze</button>
+  <div class="prog hidden" id="progWrap"><div id="progBar"></div></div>
+  <div class="status" id="status"></div>
+
+  <!-- RESULTS -->
+  <div id="results" class="hidden">
+    <div class="card">
+      <label>Detected key</label>
+      <div class="keybadge" id="keyBadge">—</div>
+      <div class="keymeta" id="keyMeta"></div>
+      <label style="margin-top:14px">Override key (re-harmonizes)</label>
+      <select id="keySelect"></select>
+    </div>
+
+    <div class="card">
+      <label>Chord progression</label>
+      <div class="timeline" id="timeline"></div>
+      <div class="row" style="margin-top:14px">
+        <button class="btn ok" id="play">▶ Play</button>
+        <button class="btn secondary" id="reroll">🎲 Reroll</button>
+      </div>
+      <div class="switch" style="margin-top:10px">
+        <span>Play melody too</span>
+        <input type="checkbox" id="withMel">
+      </div>
+    </div>
+
+    <div class="card">
+      <label>Download</label>
+      <button class="btn" id="dlChords">⬇ Download Chords MIDI</button>
+      <button class="btn secondary" id="dlMelody" style="margin-top:10px">⬇ Download Melody MIDI</button>
+      <div class="hint">Drag the .mid file into an FL Studio playlist or channel rack.</div>
+    </div>
+  </div>
+
+  <div class="hint" id="footer">
+    Runs 100% on your device — nothing is uploaded. Pitch tracking via an in-browser
+    YIN detector; chords are picked diatonically with smooth voice-leading.
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+(function(){
+  "use strict";
+  const V = window.VTM;
+  const $ = (id)=>document.getElementById(id);
+
+  // ---- state ----
+  let decodedSignal=null, decodedSR=null, fileBase="vocal";
+  let analysis=null;        // {notes,key,...}
+  let chosenKey=null;       // {tonic,mode,name}
+  let harm=null;            // current harmonization
+  let variant=0;
+  let audioCtx=null, playNodes=[], playTimer=null, highlightTimers=[];
+
+  // ---- controls ----
+  let chordsPerBar=1;
+  $("cpbSeg").addEventListener('click',(e)=>{
+    const b=e.target.closest('button'); if(!b)return;
+    [...$("cpbSeg").children].forEach(x=>x.classList.remove('on'));
+    b.classList.add('on'); chordsPerBar=+b.dataset.v;
+    if(analysis) reharmonize();
+  });
+
+  // ---- file pick + decode ----
+  $("file").addEventListener('change', async (e)=>{
+    const f=e.target.files[0]; if(!f)return;
+    fileBase=(f.name.replace(/\.[^.]+$/,'')||"vocal").replace(/[^a-z0-9_-]+/gi,'_').slice(0,40);
+    $("fileName").textContent=f.name;
+    $("fileLabel").classList.add('has');
+    $("fileLabel").querySelector('span').textContent='🎤 '+f.name;
+    setStatus('Decoding audio…');
+    try{
+      const buf=await f.arrayBuffer();
+      const ctx=ensureCtx();
+      const audio=await ctx.decodeAudioData(buf.slice(0));
+      const chans=[]; for(let c=0;c<audio.numberOfChannels;c++) chans.push(audio.getChannelData(c));
+      let mono=V.toMono(chans);
+      // cap to 120s to keep phones snappy
+      const maxLen=Math.floor(120*audio.sampleRate);
+      if(mono.length>maxLen) mono=mono.subarray(0,maxLen);
+      decodedSignal=mono; decodedSR=audio.sampleRate;
+      setStatus(`Loaded ${(mono.length/audio.sampleRate).toFixed(1)}s — ready to analyze.`);
+      $("analyze").disabled=false;
+    }catch(err){
+      setStatus('Could not decode that file. Try WAV or MP3.', true);
+      console.error(err);
+    }
+  });
+
+  // ---- analyze (chunked for progress + UI responsiveness) ----
+  $("analyze").addEventListener('click', async ()=>{
+    if(!decodedSignal) return;
+    stopPlayback();
+    $("analyze").disabled=true; $("results").classList.add('hidden');
+    $("progWrap").classList.remove('hidden'); setProg(0); setStatus('Analyzing pitch…');
+    await nextFrame();
+    try{
+      const res=await analyzeChunked(decodedSignal, decodedSR);
+      analysis=res;
+      if(!res.notes.length){
+        setStatus('No clear pitched vocal found. Try an isolated, louder vocal stem.', true);
+        $("progWrap").classList.add('hidden'); $("analyze").disabled=false; return;
+      }
+      chosenKey={tonic:res.key.tonic, mode:res.key.mode, name:res.key.name};
+      buildKeySelect(res.key);
+      $("keyBadge").textContent=res.key.name;
+      $("keyMeta").textContent=`${res.notes.length} notes detected · fit ${(res.key.score*100|0)}%`;
+      variant=0; reharmonize();
+      $("results").classList.remove('hidden');
+      $("progWrap").classList.add('hidden');
+      setStatus('Done.');
+      $("analyze").disabled=false;
+    }catch(err){
+      console.error(err);
+      setStatus('Analysis failed: '+err.message, true);
+      $("progWrap").classList.add('hidden'); $("analyze").disabled=false;
+    }
+  });
+
+  // Replicates V.pitchTrack but yields to the UI thread and reports progress.
+  async function analyzeChunked(signal, sr){
+    const sig=(sr===V.SR)?signal:V.resample(signal,sr,V.SR);
+    const HOP=V.HOP, FRAME=V.FRAME;
+    // peak RMS for silence gate
+    let maxRms=1e-9; const rmsArr=[];
+    for(let start=0; start+FRAME<=sig.length; start+=HOP){
+      let s=0; for(let j=0;j<FRAME;j++){const v=sig[start+j]; s+=v*v;}
+      const rms=Math.sqrt(s/FRAME); rmsArr.push(rms); if(rms>maxRms) maxRms=rms;
+    }
+    const frames=[]; let idx=0; const total=rmsArr.length;
+    for(let start=0; start+FRAME<=sig.length; start+=HOP, idx++){
+      const t=start/V.SR, rms=rmsArr[idx];
+      if(rms<maxRms*0.06 || rms<1e-4){ frames.push({t,f0:0,clarity:0}); }
+      else { const r=V.yinFrame(sig.subarray(start,start+FRAME),V.SR); frames.push({t,f0:r.f0,clarity:r.clarity}); }
+      if((idx&63)===0){ setProg(idx/total*0.92); await nextFrame(); }
+    }
+    setProg(0.95); await nextFrame();
+    const contour=V.cleanContour(frames);
+    const notes=V.segmentNotes(contour,HOP,V.SR);
+    const key=V.detectKey(notes);
+    setProg(1);
+    return {frames,contour,notes,key,sr:V.SR};
+  }
+
+  // ---- key override ----
+  function buildKeySelect(detected){
+    const sel=$("keySelect"); sel.innerHTML='';
+    const modes=[['major','major'],['minor','minor']];
+    for(const [m] of modes){
+      for(let t=0;t<12;t++){
+        const name=V.NOTE_NAMES[t]+' '+m;
+        const o=document.createElement('option');
+        o.value=t+':'+m; o.textContent=name;
+        if(t===detected.tonic && m===detected.mode) o.selected=true;
+        sel.appendChild(o);
+      }
+    }
+    sel.onchange=()=>{
+      const [t,m]=sel.value.split(':');
+      chosenKey={tonic:+t, mode:m, name:V.NOTE_NAMES[+t]+' '+m};
+      $("keyBadge").textContent=chosenKey.name;
+      variant=0; reharmonize();
+    };
+  }
+
+  // ---- harmonize + render ----
+  function reharmonize(){
+    if(!analysis) return;
+    harm=V.harmonize(analysis.notes, chosenKey, {
+      bpm:getBpm(), chordsPerBar, sevenths:$("sevenths").checked, variant
+    });
+    renderTimeline();
+  }
+  $("sevenths").addEventListener('change', ()=>{ if(analysis){ variant=0; reharmonize(); }});
+  $("bpm").addEventListener('change', ()=>{ if(analysis){ reharmonize(); }});
+  $("reroll").addEventListener('click', ()=>{ variant++; reharmonize(); });
+
+  function renderTimeline(){
+    const tl=$("timeline"); tl.innerHTML='';
+    harm.progression.forEach((p,i)=>{
+      const c=document.createElement('div'); c.className='chip'; c.dataset.i=i;
+      c.innerHTML=`<div class="nm">${p.name}</div><div class="rn">${p.roman}</div>`;
+      tl.appendChild(c);
+    });
+  }
+
+  // ---- playback (Web Audio) ----
+  function ensureCtx(){
+    if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    return audioCtx;
+  }
+  $("play").addEventListener('click', async ()=>{
+    if(playNodes.length||playTimer){ stopPlayback(); return; }
+    const ctx=ensureCtx();
+    if(ctx.state==='suspended') await ctx.resume(); // iOS unlock on gesture
+    startPlayback();
+  });
+  function startPlayback(){
+    const ctx=ensureCtx();
+    const t0=ctx.currentTime+0.06;
+    const master=ctx.createGain(); master.gain.value=0.9; master.connect(ctx.destination);
+    $("play").textContent='■ Stop';
+    let endTime=t0;
+    harm.progression.forEach((slot)=>{
+      const start=t0+slot.t0, dur=slot.dur*0.96;
+      endTime=Math.max(endTime,start+dur);
+      // chord pad: detuned triangle per voice
+      slot.voicing.forEach((midi,vi)=>{
+        const f=V.midiToHz(midi);
+        [0,-4,4].forEach(det=>{
+          const osc=ctx.createOscillator(); osc.type='triangle';
+          osc.frequency.value=f; osc.detune.value=det;
+          const g=ctx.createGain();
+          const a=0.02, peak=0.16/slot.voicing.length;
+          g.gain.setValueAtTime(0,start);
+          g.gain.linearRampToValueAtTime(peak,start+a);
+          g.gain.setTargetAtTime(0.0001,start+dur*0.7,0.18);
+          osc.connect(g); g.connect(master);
+          osc.start(start); osc.stop(start+dur+0.4);
+          playNodes.push(osc);
+        });
+      });
+      // highlight chip
+      const ms=(slot.t0)*1000;
+      highlightTimers.push(setTimeout(()=>highlight(slot.slot), ms+40));
+    });
+    if($("withMel").checked && analysis){
+      analysis.notes.forEach(n=>{
+        const start=t0+n.start, f=V.midiToHz(n.pitch);
+        const osc=ctx.createOscillator(); osc.type='sawtooth'; osc.frequency.value=f;
+        const g=ctx.createGain();
+        g.gain.setValueAtTime(0,start);
+        g.gain.linearRampToValueAtTime(0.12,start+0.01);
+        g.gain.setTargetAtTime(0.0001,start+n.dur*0.6,0.1);
+        const lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=2500;
+        osc.connect(lp); lp.connect(g); g.connect(master);
+        osc.start(start); osc.stop(start+n.dur+0.2);
+        playNodes.push(osc);
+      });
+    }
+    const totalMs=(endTime-ctx.currentTime)*1000+250;
+    playTimer=setTimeout(stopPlayback, totalMs);
+  }
+  function highlight(i){
+    [...$("timeline").children].forEach(c=>c.classList.toggle('active', +c.dataset.i===i));
+  }
+  function stopPlayback(){
+    playNodes.forEach(n=>{ try{n.stop();}catch(e){} });
+    playNodes=[];
+    highlightTimers.forEach(clearTimeout); highlightTimers=[];
+    if(playTimer){ clearTimeout(playTimer); playTimer=null; }
+    $("play").textContent='▶ Play';
+    [...$("timeline").children].forEach(c=>c.classList.remove('active'));
+  }
+
+  // ---- downloads ----
+  function keyTag(){
+    const k=chosenKey; return V.NOTE_NAMES[k.tonic].replace('#','s')+(k.mode==='major'?'maj':'min');
+  }
+  function download(bytes, name){
+    const blob=new Blob([bytes],{type:'audio/midi'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download=name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1500);
+  }
+  $("dlChords").addEventListener('click', ()=>{
+    if(!harm)return;
+    download(V.chordsMidi(harm,getBpm()), `${fileBase}_chords_${keyTag()}_${getBpm()}bpm.mid`);
+  });
+  $("dlMelody").addEventListener('click', ()=>{
+    if(!analysis)return;
+    download(V.melodyMidi(analysis.notes,getBpm()), `${fileBase}_melody_${keyTag()}_${getBpm()}bpm.mid`);
+  });
+
+  // ---- helpers ----
+  function getBpm(){ let b=parseInt($("bpm").value,10); if(!b||b<40)b=120; if(b>240)b=240; return b; }
+  function setStatus(t,isErr){ const s=$("status"); s.textContent=t; s.classList.toggle('err',!!isErr); }
+  function setProg(p){ $("progBar").style.width=(Math.max(0,Math.min(1,p))*100)+'%'; }
+  function nextFrame(){ return new Promise(r=>requestAnimationFrame(()=>r())); }
+})();
+</script>
+</body>
+</html>

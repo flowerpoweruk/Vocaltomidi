@@ -44,8 +44,10 @@ chord-palette/
 
 ## Build & run
 
+> **Full step-by-step setup is in [INSTALL.md](INSTALL.md).** The short version:
+>
 > Requires the Ableton Extensions SDK distribution (Live 12 Suite Beta 12.4.5+)
-> and Node.js ≥ 22.11 (the CLI recommends ≥ 24.14).
+> and Node.js ≥ 22.11 (the CLI requires ≥ 24.14).
 
 1. Copy the two packages from your SDK download into `vendor/`:
    - `ableton-extensions-sdk-1.0.0-beta.0.tgz`

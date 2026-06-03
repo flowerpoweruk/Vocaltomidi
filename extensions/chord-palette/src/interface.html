@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chord Palette</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    *:not(dialog) { margin: 0; }
+    input, button, select { font: inherit; color: inherit; }
+
+    /* Live dark theme palette */
+    :root {
+      --p-live-ui-bg: hsl(0, 0%, 21%);
+      --p-live-control-bg: hsl(0, 0%, 16%);
+      --p-live-input-bg: hsl(0, 0%, 12%);
+      --p-live-text-primary: hsl(0, 0%, 78%);
+      --p-live-control-border: hsl(0, 0%, 7%);
+      --p-live-text-secondary: hsl(0, 0%, 46%);
+      --p-live-accent-primary: hsl(31, 100%, 67%);
+      --p-live-control-text--enabled: hsl(0, 0%, 7%);
+
+      --c-bg: var(--p-live-ui-bg);
+      --c-panel: hsl(0, 0%, 18%);
+      --c-text: var(--p-live-text-primary);
+      --c-text-dim: var(--p-live-text-secondary);
+      --c-control: var(--p-live-control-bg);
+      --c-control-hover: hsl(0, 0%, 24%);
+      --c-border: var(--p-live-control-border);
+      --c-input: var(--p-live-input-bg);
+      --c-accent: var(--p-live-accent-primary);
+      --c-on-accent: var(--p-live-control-text--enabled);
+    }
+
+    html {
+      background-color: var(--c-bg);
+      color: var(--c-text);
+      font-family: "AbletonSansSmall", system-ui, sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      -webkit-font-smoothing: antialiased;
+      height: 100%;
+    }
+    body { height: 100%; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+
+    h1 { font-size: 14px; letter-spacing: 0.02em; }
+    h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--c-text-dim); margin-bottom: 6px; }
+
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .grow { flex: 1; }
+    .spacer { flex: 1; }
+
+    label.field { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: var(--c-text-dim); }
+
+    select, input[type="text"], input[type="number"] {
+      background: var(--c-input);
+      border: 1px solid var(--c-border);
+      height: 22px; padding: 0 6px; width: 100%;
+    }
+    input[type="range"] { width: 100%; accent-color: var(--c-accent); }
+
+    .panel { background: var(--c-panel); border: 1px solid var(--c-border); border-radius: 6px; padding: 10px; }
+
+    .palette { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+    .chord-btn {
+      background: var(--c-control); border: 1px solid var(--c-border); border-radius: 4px;
+      height: 54px; cursor: pointer; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 2px; user-select: none;
+    }
+    .chord-btn:hover { background: var(--c-control-hover); }
+    .chord-btn:active { background: var(--c-accent); color: var(--c-on-accent); }
+    .chord-btn .roman { font-size: 10px; color: var(--c-text-dim); }
+    .chord-btn:active .roman { color: var(--c-on-accent); }
+    .chord-btn .name { font-size: 14px; }
+
+    .prog { display: flex; gap: 6px; flex-wrap: wrap; min-height: 40px; align-items: center; }
+    .chip {
+      background: var(--c-accent); color: var(--c-on-accent); border: none; border-radius: 14px;
+      height: 28px; padding: 0 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+    }
+    .chip .x { opacity: 0.7; font-weight: 700; }
+    .chip:hover .x { opacity: 1; }
+    .empty-hint { color: var(--c-text-dim); font-style: italic; }
+
+    .seg { display: inline-flex; border: 1px solid var(--c-border); border-radius: 4px; overflow: hidden; }
+    .seg button { background: var(--c-control); border: none; height: 22px; padding: 0 10px; cursor: pointer; }
+    .seg button.active { background: var(--c-accent); color: var(--c-on-accent); }
+
+    .btn {
+      background: var(--c-control); border: 1px solid var(--c-border); border-radius: 14px;
+      height: 26px; padding: 0 14px; cursor: pointer; white-space: nowrap;
+    }
+    .btn:hover { background: var(--c-control-hover); }
+    .btn.primary { background: var(--c-accent); color: var(--c-on-accent); border-color: var(--c-accent); font-weight: 600; }
+    .btn:active { transform: translateY(1px); }
+
+    .settings-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .val { color: var(--c-text); font-variant-numeric: tabular-nums; }
+    .checkbox { display: inline-flex; gap: 6px; align-items: center; }
+  </style>
+</head>
+
+<body>
+  <div class="row">
+    <h1>Chord Palette</h1>
+    <span class="spacer"></span>
+    <label class="field" style="flex-direction: row; align-items: center;">
+      Key
+      <select id="key" style="width: 64px; margin-left: 6px;"></select>
+    </label>
+    <label class="field" style="flex-direction: row; align-items: center;">
+      Scale
+      <select id="scale" style="width: 200px; margin-left: 6px;"></select>
+    </label>
+    <button class="btn" id="useLive" title="Use the scale currently set in Live">Use Live's scale</button>
+  </div>
+
+  <div class="panel">
+    <div class="row">
+      <h2 style="margin: 0;">Chord palette</h2>
+      <span class="spacer"></span>
+      <span style="color: var(--c-text-dim);">Type</span>
+      <div class="seg" id="chordType">
+        <button data-type="triad" class="active">Triad</button>
+        <button data-type="7">7th</button>
+        <button data-type="9">9th</button>
+        <button data-type="6">6</button>
+        <button data-type="sus2">sus2</button>
+        <button data-type="sus4">sus4</button>
+        <button data-type="add9">add9</button>
+      </div>
+    </div>
+    <div class="palette" id="palette" style="margin-top: 8px;"></div>
+  </div>
+
+  <div class="panel">
+    <div class="row">
+      <h2 style="margin: 0;">Progression</h2>
+      <span class="spacer"></span>
+      <label class="field" style="flex-direction: row; align-items: center;">
+        Preset
+        <select id="preset" style="width: 230px; margin-left: 6px;"></select>
+      </label>
+      <button class="btn" id="clear">Clear</button>
+    </div>
+    <div class="prog" id="prog" style="margin-top: 8px;"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Performance</h2>
+    <div class="settings-grid">
+      <label class="field">Octave <span class="val" id="octaveVal"></span>
+        <input type="range" id="octave" min="2" max="6" step="1" />
+      </label>
+      <label class="field">Chord length (beats) <span class="val" id="beatsVal"></span>
+        <input type="range" id="beats" min="0.5" max="8" step="0.5" />
+      </label>
+      <label class="field">Repeats <span class="val" id="repeatsVal"></span>
+        <input type="range" id="repeats" min="1" max="8" step="1" />
+      </label>
+      <label class="field">Velocity <span class="val" id="velVal"></span>
+        <input type="range" id="velocity" min="1" max="127" step="1" />
+      </label>
+      <label class="field">Voicing
+        <select id="voicing">
+          <option value="close">Close</option>
+          <option value="open">Open</option>
+          <option value="spread">Spread (+ bass)</option>
+        </select>
+      </label>
+      <label class="field">Strum (beats) <span class="val" id="strumVal"></span>
+        <input type="range" id="strum" min="0" max="0.5" step="0.01" />
+      </label>
+      <label class="field">Humanize <span class="val" id="humanizeVal"></span>
+        <input type="range" id="humanize" min="0" max="100" step="1" />
+      </label>
+      <label class="field" style="justify-content: flex-end;">
+        <span class="checkbox"><input type="checkbox" id="addBass" /> Add bass note</span>
+      </label>
+    </div>
+  </div>
+
+  <div class="row">
+    <span id="summary" class="val" style="color: var(--c-text-dim);"></span>
+    <span class="spacer"></span>
+    <button class="btn" id="cancel">Cancel</button>
+    <button class="btn primary" id="write">Write to Clip</button>
+  </div>
+
+  <script>
+    const DEFAULTS = /*__DEFAULTS__*/null;
+
+    // ---- host messaging (mirrors the SDK modal-dialog contract) ----
+    const isWebKit = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.live;
+    const isWebView2 = window.chrome && window.chrome.webview;
+    function send(message) {
+      if (isWebKit) window.webkit.messageHandlers.live.postMessage(message);
+      else if (isWebView2) window.chrome.webview.postMessage(message);
+    }
+    function closeWith(result) {
+      send({ method: "close_and_send", params: [JSON.stringify(result)] });
+    }
+
+    // ---- music theory (display + spec only; pitches are generated by the extension) ----
+    const NOTE_NAMES = DEFAULTS.noteNames;
+    const SCALES = DEFAULTS.scales.slice();
+    const mod = (n, m) => ((n % m) + m) % m;
+
+    const CHORD_OFFSETS = {
+      triad: [0, 2, 4], "7": [0, 2, 4, 6], "9": [0, 2, 4, 6, 8],
+      "6": [0, 2, 4, 5], sus2: [0, 1, 4], sus4: [0, 3, 4], add9: [0, 2, 4, 8],
+    };
+
+    const PRESETS = [
+      { name: "— none —", degrees: [] },
+      { name: "Pop  (I–V–vi–IV)", degrees: [1, 5, 6, 4] },
+      { name: "EDM Anthem  (vi–IV–I–V)", degrees: [6, 4, 1, 5] },
+      { name: "House / 50s  (I–vi–IV–V)", degrees: [1, 6, 4, 5] },
+      { name: "Future Bass  (IV–I–V–vi)", degrees: [4, 1, 5, 6] },
+      { name: "Emotional  (i–VI–III–VII)", degrees: [1, 6, 3, 7] },
+      { name: "Tension  (i–iv–v–i)", degrees: [1, 4, 5, 1] },
+      { name: "Andalusian  (i–VII–VI–V)", degrees: [1, 7, 6, 5] },
+    ];
+
+    const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII"];
+
+    // ---- state ----
+    const state = {
+      rootNote: 0,
+      intervals: SCALES[0].intervals.slice(),
+      scaleId: SCALES[0].id,
+      chordType: "triad",
+      progression: [],
+      octave: 4, beats: 4, repeats: 1, velocity: 100,
+      voicing: "close", strum: 0, humanize: 0, addBass: false,
+    };
+
+    function intervalsFor(scaleId) {
+      const s = SCALES.find((x) => x.id === scaleId);
+      return s ? s.intervals.slice() : state.intervals;
+    }
+
+    function scalePitch(step) {
+      const n = state.intervals.length;
+      return state.rootNote + state.intervals[mod(step, n)] + 12 * Math.floor(step / n);
+    }
+
+    // Human-readable chord label for a 1-based degree and chord type.
+    function chordLabel(degree, type) {
+      const rootStep = degree - 1;
+      const rootPitch = scalePitch(rootStep);
+      const rootName = NOTE_NAMES[mod(rootPitch, 12)];
+      const tones = new Set(CHORD_OFFSETS[type].map((o) => mod(scalePitch(rootStep + o) - rootPitch, 12)));
+      const has = (x) => tones.has(x);
+
+      if (type === "sus2") return rootName + "sus2";
+      if (type === "sus4") return rootName + "sus4";
+
+      let triad = "";
+      if (has(4) && has(7)) triad = "";          // major
+      else if (has(3) && has(7)) triad = "m";     // minor
+      else if (has(3) && has(6)) triad = "dim";   // diminished
+      else if (has(4) && has(8)) triad = "aug";   // augmented
+      const minorish = triad === "m" || triad === "dim";
+
+      if (type === "triad") return rootName + triad;
+      if (type === "6") return rootName + (minorish ? "m6" : "6");
+      if (type === "add9") return rootName + (minorish ? "m(add9)" : "add9");
+
+      // 7th / 9th: classify the seventh.
+      let sev = has(11) ? "maj7" : has(10) ? "7" : has(9) ? "dim7" : "7";
+      if (triad === "dim" && has(10)) sev = "m7♭5";
+      let base;
+      if (triad === "dim") base = rootName + (sev === "dim7" ? "dim7" : sev);
+      else if (sev === "maj7") base = rootName + (triad === "m" ? "mMaj7" : "maj7");
+      else base = rootName + triad + "7";
+      return type === "9" ? base.replace(/7$/, "9").replace("maj9", "maj9") + (base.endsWith("7") ? "" : "") : base;
+    }
+
+    function keyScaleName() {
+      const root = NOTE_NAMES[state.rootNote];
+      const s = SCALES.find((x) => x.id === state.scaleId);
+      return root + " " + (s ? s.name.replace(/\s*\(.*\)/, "") : "scale");
+    }
+
+    // ---- rendering ----
+    const $ = (id) => document.getElementById(id);
+
+    function renderPalette() {
+      const el = $("palette");
+      el.innerHTML = "";
+      for (let d = 1; d <= 7; d++) {
+        const btn = document.createElement("button");
+        btn.className = "chord-btn";
+        btn.innerHTML = '<span class="roman">' + ROMAN[d - 1] + '</span><span class="name">' +
+          chordLabel(d, state.chordType) + '</span>';
+        btn.onclick = () => { state.progression.push({ degree: d, type: state.chordType }); renderProg(); };
+        el.appendChild(btn);
+      }
+    }
+
+    function renderProg() {
+      const el = $("prog");
+      el.innerHTML = "";
+      if (state.progression.length === 0) {
+        el.innerHTML = '<span class="empty-hint">Click chords above, or pick a preset…</span>';
+      } else {
+        state.progression.forEach((c, i) => {
+          const chip = document.createElement("button");
+          chip.className = "chip";
+          chip.innerHTML = chordLabel(c.degree, c.type) + ' <span class="x">×</span>';
+          chip.title = "Remove";
+          chip.onclick = () => { state.progression.splice(i, 1); renderProg(); };
+          el.appendChild(chip);
+        });
+      }
+      updateSummary();
+    }
+
+    function updateSummary() {
+      const steps = state.progression.length;
+      const bars = (steps * state.beats * state.repeats) / 4;
+      $("summary").textContent = steps
+        ? steps + " chords · " + state.repeats + "× · ~" + bars.toFixed(bars % 1 ? 1 : 0) + " bars in 4/4"
+        : "";
+    }
+
+    function buildScaleOptions() {
+      const sel = $("scale");
+      sel.innerHTML = "";
+      SCALES.forEach((s) => {
+        const o = document.createElement("option");
+        o.value = s.id; o.textContent = s.name;
+        sel.appendChild(o);
+      });
+      sel.value = state.scaleId;
+    }
+
+    function buildKeyOptions() {
+      const sel = $("key");
+      sel.innerHTML = "";
+      NOTE_NAMES.forEach((n, i) => {
+        const o = document.createElement("option");
+        o.value = String(i); o.textContent = n;
+        sel.appendChild(o);
+      });
+      sel.value = String(state.rootNote);
+    }
+
+    function buildPresetOptions() {
+      const sel = $("preset");
+      PRESETS.forEach((p, i) => {
+        const o = document.createElement("option");
+        o.value = String(i); o.textContent = p.name;
+        sel.appendChild(o);
+      });
+    }
+
+    function syncSliderLabels() {
+      $("octaveVal").textContent = state.octave;
+      $("beatsVal").textContent = state.beats;
+      $("repeatsVal").textContent = state.repeats;
+      $("velVal").textContent = state.velocity;
+      $("strumVal").textContent = state.strum.toFixed(2);
+      $("humanizeVal").textContent = state.humanize;
+    }
+
+    // ---- wiring ----
+    function init() {
+      // Seed from Live's current scale if available.
+      if (DEFAULTS.live && DEFAULTS.live.available) {
+        state.rootNote = DEFAULTS.live.rootNote;
+        if (DEFAULTS.live.matchedScaleId) {
+          state.scaleId = DEFAULTS.live.matchedScaleId;
+          state.intervals = intervalsFor(state.scaleId);
+        } else {
+          // Add Live's exact scale as a custom option.
+          SCALES.unshift({ id: "__live", name: "Live: " + (DEFAULTS.live.name || "Current"), intervals: DEFAULTS.live.intervals.slice() });
+          state.scaleId = "__live";
+          state.intervals = DEFAULTS.live.intervals.slice();
+        }
+      }
+
+      buildKeyOptions();
+      buildScaleOptions();
+      buildPresetOptions();
+
+      $("key").onchange = (e) => { state.rootNote = parseInt(e.target.value, 10); renderPalette(); renderProg(); };
+      $("scale").onchange = (e) => { state.scaleId = e.target.value; state.intervals = intervalsFor(state.scaleId); renderPalette(); renderProg(); };
+      $("useLive").onclick = () => {
+        if (!(DEFAULTS.live && DEFAULTS.live.available)) return;
+        state.rootNote = DEFAULTS.live.rootNote;
+        if (!SCALES.find((s) => s.id === "__live")) {
+          SCALES.unshift({ id: "__live", name: "Live: " + (DEFAULTS.live.name || "Current"), intervals: DEFAULTS.live.intervals.slice() });
+          buildScaleOptions();
+        }
+        state.scaleId = DEFAULTS.live.matchedScaleId || "__live";
+        state.intervals = intervalsFor(state.scaleId);
+        $("key").value = String(state.rootNote);
+        $("scale").value = state.scaleId;
+        renderPalette(); renderProg();
+      };
+
+      document.querySelectorAll("#chordType button").forEach((b) => {
+        b.onclick = () => {
+          document.querySelectorAll("#chordType button").forEach((x) => x.classList.remove("active"));
+          b.classList.add("active");
+          state.chordType = b.dataset.type;
+          renderPalette();
+        };
+      });
+
+      $("preset").onchange = (e) => {
+        const p = PRESETS[parseInt(e.target.value, 10)];
+        if (p && p.degrees.length) {
+          state.progression = p.degrees.map((d) => ({ degree: d, type: state.chordType }));
+          renderProg();
+        }
+      };
+      $("clear").onclick = () => { state.progression = []; $("preset").value = "0"; renderProg(); };
+
+      const bind = (id, key, parse) => {
+        const el = $(id);
+        el.value = state[key];
+        el.oninput = (e) => { state[key] = parse(e.target.value); syncSliderLabels(); updateSummary(); };
+      };
+      bind("octave", "octave", (v) => parseInt(v, 10));
+      bind("beats", "beats", parseFloat);
+      bind("repeats", "repeats", (v) => parseInt(v, 10));
+      bind("velocity", "velocity", (v) => parseInt(v, 10));
+      bind("strum", "strum", parseFloat);
+      bind("humanize", "humanize", (v) => parseInt(v, 10));
+      $("voicing").value = state.voicing;
+      $("voicing").onchange = (e) => { state.voicing = e.target.value; };
+      $("addBass").onchange = (e) => { state.addBass = e.target.checked; };
+
+      $("cancel").onclick = () => closeWith({ action: "cancel" });
+      $("write").onclick = () => {
+        if (state.progression.length === 0) { closeWith({ action: "cancel" }); return; }
+        closeWith({
+          action: "write",
+          clipName: "Chord Palette — " + keyScaleName(),
+          settings: {
+            rootNote: state.rootNote,
+            intervals: state.intervals,
+            baseOctave: state.octave,
+            chordBeats: state.beats,
+            repeats: state.repeats,
+            velocity: state.velocity,
+            voicing: state.voicing,
+            addBass: state.addBass,
+            strumBeats: state.strum,
+            humanize: state.humanize,
+          },
+          progression: state.progression,
+        });
+      };
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") closeWith({ action: "cancel" });
+        if (e.key === "Enter") $("write").click();
+      });
+
+      syncSliderLabels();
+      renderPalette();
+      renderProg();
+    }
+
+    document.addEventListener("DOMContentLoaded", init);
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,5 @@
+node_modules/
+dist/
+# The Ableton Extensions SDK may not be redistributed — keep the .tgz local only.
+vendor/*.tgz
+.env
